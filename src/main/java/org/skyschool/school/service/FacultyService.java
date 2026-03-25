@@ -4,8 +4,6 @@ import org.skyschool.school.model.Faculty;
 import org.skyschool.school.repos.FacultyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -16,10 +14,6 @@ public class FacultyService {
 
     @Autowired
     FacultyRepository repository;
-
-//    public FacultyService(FacultyRepository repository){
-//        this.repository = repository;
-//    }
 
     public HashSet<Faculty> getAll(){
         return new HashSet<>(repository.findAll());
