@@ -1,7 +1,12 @@
 package org.skyschool.school.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+
 import java.util.Objects;
 
+@Entity
 public class Student {
     private long id;
     private String name;
@@ -18,6 +23,9 @@ public class Student {
     }
 
 
+
+    @Id
+    @GeneratedValue
     public long getId() {
         return id;
     }
