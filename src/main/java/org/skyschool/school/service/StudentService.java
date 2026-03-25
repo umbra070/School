@@ -1,30 +1,48 @@
 package org.skyschool.school.service;
 
 import org.skyschool.school.model.Student;
+import org.skyschool.school.repos.StudentsRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
+@Service
 public class StudentService {
-    private final HashMap<Long, Student> students = new HashMap<Long, Student>();
-    private long count = 0;
+    @Autowired
+    private StudentsRepository repository;
+
+//    public StudentService(StudentsRepository repository){
+//        this.repository = repository;
+//    }
 
     public Student addStudent(Student student) {
-        student.setId(count++);
-        return students.put(student.getId(), student);
+        return repository.save(student);
     }
 
     public Student editStudent(Student student) {
-        if (!students.containsKey(student.getId())) {
-            return null;
-        }
-        return students.put(student.getId(), student);
+        Student findStudent = repository.findById(student.getId()).get();
+        return repository.save(student);
     }
 
     public Student findStudent(long id) {
-        return students.get(id);
+        return repository.findById(id).get();
     }
 
-    public Student removeStudent(long id) {
-        return students.remove(id);
+    public HashSet<Student> getStudents() {
+        return new HashSet<>(repository.findAll());
+    }
+
+    public void removeStudent(long id) {
+        repository.deleteById(id);
+    }
+
+    public Set<Student> findStudentByAge(int age) {
+        return repository.findAll().stream()
+                .filter(s -> age == s.getAge())
+                .collect(Collectors.toSet());
     }
 }

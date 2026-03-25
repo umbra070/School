@@ -1,34 +1,49 @@
 package org.skyschool.school.service;
 
 import org.skyschool.school.model.Faculty;
+import org.skyschool.school.repos.FacultyRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class FacultyService {
-    private final HashMap<Long, Faculty> faculties = new HashMap<>();
-    private long count = 0;
+
+    @Autowired
+    FacultyRepository repository;
+
+//    public FacultyService(FacultyRepository repository){
+//        this.repository = repository;
+//    }
+
+    public HashSet<Faculty> getAll(){
+        return new HashSet<>(repository.findAll());
+    }
 
     public Faculty addFaculty(Faculty faculty) {
-        faculty.setId(count++);
-        faculties.put(faculty.getId(), faculty);
-        return faculty;
+        return repository.save(faculty);
     }
 
     public Faculty findFaculty(long id) {
-        return faculties.get(id);
+        return repository.findById(id).get();
     }
 
     public Faculty editFaculty(Faculty faculty) {
-        if (!faculties.containsKey(faculty.getId())) {
-            return null;
-        }
-        faculties.put(faculty.getId(), faculty);
-        return faculty;
+        return repository.save(faculty);
     }
 
-    public Faculty deleteFaculty(long id) {
-        return faculties.remove(id);
+    public void deleteFaculty(long id) {
+        repository.deleteById(id);
+    }
+
+    public Set<Faculty> findFacultyByColor(String color) {
+        return repository.findAll().stream()
+                .filter(f -> Objects.equals(color, f.getColor()))
+                .collect(Collectors.toSet());
     }
 }
