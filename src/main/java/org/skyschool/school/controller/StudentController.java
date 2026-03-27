@@ -1,16 +1,15 @@
 package org.skyschool.school.controller;
 
+import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
+import org.skyschool.school.service.RelationshipService;
 import org.skyschool.school.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -18,6 +17,8 @@ import java.util.Set;
 public class StudentController {
     @Autowired
     private StudentService studentService;
+    @Autowired
+    private RelationshipService relationship;
 
     //GET http://localhost:8080/student/{id}
     @GetMapping("/{id}")
@@ -34,6 +35,16 @@ public class StudentController {
     public ResponseEntity<HashSet<Student>> getStudents() {
         Set<Student> students = new HashSet<>();
         return ResponseEntity.ok(studentService.getStudents());
+    }
+
+    //GET http://localhost:8080/student/{studentId}/faculty
+    @GetMapping("/{studentId}/faculty")
+    public ResponseEntity<Faculty> getFaculty(@PathVariable long studentId) {
+        Faculty findFaculty = relationship.getFacultyFromStudent(studentId);
+        if (findFaculty == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        return ResponseEntity.ok(findFaculty);
     }
 
     //GET http://localhost:8080/student/age/{age}
@@ -55,6 +66,24 @@ public class StudentController {
         return ResponseEntity.ok(studentService.editStudent(student));
     }
 
+    //PUT http://localhost:8080/student/{studentId}/faculty/{facultyId}
+    @PutMapping("{studentId}/faculty/{facultyId}")
+    public ResponseEntity<Student> addFacultyToStudent(
+            @PathVariable long studentId,
+            @PathVariable long facultyId) {
+
+        if (studentId < 0 || facultyId < 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if(!relationship.checkEntities(studentId, facultyId)){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if(relationship.addRelationship(studentId, facultyId)){
+            return ResponseEntity.ok(studentService.findStudent(studentId));
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+
     //POST http://localhost:8080/student
     @PostMapping
     public Student createStudent(@RequestBody Student student) {
@@ -67,5 +96,10 @@ public class StudentController {
         Student findStudent = studentService.findStudent(id);
         studentService.removeStudent(id);
         return ResponseEntity.ok(findStudent);
+    }
+
+    @GetMapping("/age/range")
+    public ResponseEntity<Set<Student>> getStudentsByRange(@RequestParam int min, @RequestParam int max) {
+        return ResponseEntity.ok(studentService.findStudentsByRange(min, max));
     }
 }

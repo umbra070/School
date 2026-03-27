@@ -3,15 +3,22 @@ package org.skyschool.school.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 @Entity
 public class Faculty {
+    @Id
+    @GeneratedValue
     private long id;
     private String name, color;
+    @OneToMany(mappedBy = "faculty")
+    private Set<Student> students;
 
-    public Faculty(){
+    public Faculty() {
 
     }
 
@@ -19,10 +26,9 @@ public class Faculty {
         this.id = id;
         this.name = name;
         this.color = color;
+        students = new HashSet<>();
     }
 
-    @Id
-    @GeneratedValue
     public long getId() {
         return id;
     }
@@ -33,6 +39,10 @@ public class Faculty {
 
     public String getName() {
         return name;
+    }
+
+    public void addStudent(Student s) {
+        students.add(s);
     }
 
     public void setName(String name) {
@@ -49,7 +59,7 @@ public class Faculty {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, color);
+        return Objects.hash(name, color);
     }
 
     @Override
@@ -67,5 +77,9 @@ public class Faculty {
     @Override
     public String toString() {
         return String.format("id:%d|name:%s|color:%s", id, name, color);
+    }
+
+    public void removeStudent(Student student){
+        students.remove(student);
     }
 }

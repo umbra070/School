@@ -1,7 +1,9 @@
 package org.skyschool.school.controller;
 
 import org.skyschool.school.model.Faculty;
+import org.skyschool.school.model.Student;
 import org.skyschool.school.service.FacultyService;
+import org.skyschool.school.service.RelationshipService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,8 @@ import java.util.Set;
 public class FacultyController {
     @Autowired
     private FacultyService facultyService;
+    @Autowired
+    private RelationshipService relationship;
 
     //GET http://localhost:8080/faculty/{id}
     @GetMapping("/{id}")
@@ -24,9 +28,16 @@ public class FacultyController {
         return ResponseEntity.ok(faculty);
     }
 
+    //GET http://localhost:8080/faculty/{id}/students
+    @GetMapping("/{id}/students")
+    public ResponseEntity<Set<Student>> getStudentsFromFaculty(@PathVariable long id){
+        Set<Student> students = relationship.findStudentsInFaculty(id);
+        return ResponseEntity.ok(students);
+    }
+
     //GET http://localhost:8080/faculty
     @GetMapping
-    public ResponseEntity<Set<Faculty>> getFacuties(){
+    public ResponseEntity<Set<Faculty>> getFaculties() {
         return ResponseEntity.ok(facultyService.getAll());
     }
 
@@ -40,6 +51,24 @@ public class FacultyController {
         return ResponseEntity.ok(facultyService.editFaculty(faculty));
     }
 
+    //PUT http://localhost:8080/faculty/{facultyId}/student/{studentId}
+    @PutMapping("{facultyId}/student/{studentId}")
+    public ResponseEntity<Student> addStudentToFaculty(
+            @PathVariable long facultyId,
+            @PathVariable long studentId) {
+
+        if (studentId < 0 || facultyId < 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if(!relationship.checkEntities(studentId, facultyId)){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if(relationship.addRelationship(studentId, facultyId)){
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+    }
+
     //GET http://localhost:8080/faculty/color/{color}
     @GetMapping("/color/{color}")
     public ResponseEntity<Set<Faculty>> getFacultyByColor(@PathVariable String color) {
@@ -49,6 +78,8 @@ public class FacultyController {
         }
         return ResponseEntity.ok(findFaculty);
     }
+
+
 
     //POST http://localhost:8080/faculty
     @PostMapping
