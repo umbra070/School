@@ -3,11 +3,11 @@ package org.skyschool.school.controller;
 import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
 import org.skyschool.school.service.FacultyService;
-import org.skyschool.school.service.RelationshipService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.Set;
 
 @RestController
@@ -15,8 +15,7 @@ import java.util.Set;
 public class FacultyController {
     @Autowired
     private FacultyService facultyService;
-    @Autowired
-    private RelationshipService relationship;
+
 
     //GET http://localhost:8080/faculty/{id}
     @GetMapping("/{id}")
@@ -28,10 +27,13 @@ public class FacultyController {
         return ResponseEntity.ok(faculty);
     }
 
-    //GET http://localhost:8080/faculty/{id}/students
-    @GetMapping("/{id}/students")
-    public ResponseEntity<Set<Student>> getStudentsFromFaculty(@PathVariable long id){
-        Set<Student> students = relationship.findStudentsInFaculty(id);
+    //GET http://localhost:8080/faculty/{facultyId}/students
+    @GetMapping("/{facultyId}/students")
+    public ResponseEntity<Set<Student>> getStudentsFromFaculty(@PathVariable Long facultyId) {
+        Set<Student> students = facultyService.findStudentsInFaculty(facultyId);
+        if (students == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
         return ResponseEntity.ok(students);
     }
 
@@ -60,10 +62,10 @@ public class FacultyController {
         if (studentId < 0 || facultyId < 0) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        if(!relationship.checkEntities(studentId, facultyId)){
+        if (!facultyService.checkEntities(studentId, facultyId)) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        if(relationship.addRelationship(studentId, facultyId)){
+        if (facultyService.addRelationship(studentId, facultyId)) {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -80,7 +82,6 @@ public class FacultyController {
     }
 
 
-
     //POST http://localhost:8080/faculty
     @PostMapping
     public Faculty createFaculty(@RequestBody Faculty faculty) {
@@ -91,7 +92,10 @@ public class FacultyController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Faculty> deleteFaculty(@PathVariable long id) {
         Faculty deletingFaculty = facultyService.findFaculty(id);
-        facultyService.deleteFaculty(id);
-        return ResponseEntity.ok(deletingFaculty);
+        boolean checkRemove = facultyService.deleteFaculty(id);
+        if(!checkRemove){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        return ResponseEntity.noContent().build();
     }
 }

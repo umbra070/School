@@ -13,7 +13,7 @@ import java.util.Set;
 public class Faculty {
     @Id
     @GeneratedValue
-    private long id;
+    private Long id;
     private String name, color;
     @OneToMany(mappedBy = "faculty")
     private Set<Student> students;
@@ -22,18 +22,22 @@ public class Faculty {
 
     }
 
-    public Faculty(long id, String name, String color) {
+    public Faculty(Long id, String name, String color) {
         this.id = id;
         this.name = name;
         this.color = color;
         students = new HashSet<>();
     }
 
-    public long getId() {
+    public Set<Student> getStudents(){
+        return students;
+    }
+
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -71,7 +75,7 @@ public class Faculty {
             return false;
         }
         Faculty f = (Faculty) obj;
-        return this.id == f.id && Objects.equals(this.name, f.name) && Objects.equals(this.color, f.color);
+        return Objects.equals(this.id, f.id) && Objects.equals(this.name, f.name) && Objects.equals(this.color, f.color);
     }
 
     @Override

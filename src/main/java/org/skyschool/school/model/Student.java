@@ -85,6 +85,10 @@ public class Student {
         return faculty;
     }
 
+    public boolean isFacultyPresent(){
+        return this.faculty != null;
+    }
+
     public void setFaculty(Faculty faculty) {
         this.faculty = faculty;
     }
