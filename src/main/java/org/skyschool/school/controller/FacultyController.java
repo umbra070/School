@@ -55,7 +55,7 @@ public class FacultyController {
 
     //PUT http://localhost:8080/faculty/{facultyId}/student/{studentId}
     @PutMapping("{facultyId}/student/{studentId}")
-    public ResponseEntity<Student> addStudentToFaculty(
+    public ResponseEntity<Long> addStudentToFaculty(
             @PathVariable long facultyId,
             @PathVariable long studentId) {
 
@@ -66,7 +66,7 @@ public class FacultyController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         if (facultyService.addRelationship(studentId, facultyId)) {
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(studentId);
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
@@ -74,11 +74,11 @@ public class FacultyController {
     //GET http://localhost:8080/faculty/color/{color}
     @GetMapping("/color/{color}")
     public ResponseEntity<Set<Faculty>> getFacultyByColor(@PathVariable String color) {
-        Set<Faculty> findFaculty = facultyService.findFacultyByColor(color);
-        if (findFaculty.isEmpty()) {
+        Set<Faculty> foundFaculties = facultyService.findFacultyByColor(color);
+        if (foundFaculties.isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        return ResponseEntity.ok(findFaculty);
+        return ResponseEntity.ok(foundFaculties);
     }
 
 
@@ -96,6 +96,6 @@ public class FacultyController {
         if(!checkRemove){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }

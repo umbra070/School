@@ -14,6 +14,8 @@ public class Student {
     @ManyToOne
     @JoinColumn(name="faculty_id")
     private Faculty faculty;
+    @OneToOne(mappedBy = "student")
+    private Avatar avatar;
 
     public Student() {
 
@@ -70,7 +72,7 @@ public class Student {
         if(s.id == null && this.id == null){
             return (this.name.equals(s.name) && this.age == s.age);
         }
-        return Objects.equals(this.id, s.id);
+        return (this.name.equals(s.name) && this.age == s.age && Objects.equals(this.id, s.id));
     }
 
     @Override

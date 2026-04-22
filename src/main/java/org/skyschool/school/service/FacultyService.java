@@ -17,9 +17,9 @@ import java.util.stream.Collectors;
 public class FacultyService {
 
     @Autowired
-    FacultyRepository fRepository;
+    private FacultyRepository fRepository;
     @Autowired
-    StudentsRepository sRepository;
+    private StudentsRepository sRepository;
 
     @Transactional(readOnly = true)
     public HashSet<Faculty> getAll() {

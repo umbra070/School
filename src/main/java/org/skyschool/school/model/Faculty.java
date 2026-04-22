@@ -1,5 +1,6 @@
 package org.skyschool.school.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -16,6 +17,7 @@ public class Faculty {
     private Long id;
     private String name, color;
     @OneToMany(mappedBy = "faculty")
+    @JsonIgnore
     private Set<Student> students;
 
     public Faculty() {
