@@ -21,7 +21,12 @@ public class Faculty {
     private Set<Student> students;
 
     public Faculty() {
-
+        students = new HashSet<>();
+    }
+    public Faculty(String name, String color){
+        this.name = name;
+        this.color = color;
+        students = new HashSet<>();
     }
 
     public Faculty(Long id, String name, String color) {

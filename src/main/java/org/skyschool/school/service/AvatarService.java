@@ -109,7 +109,6 @@ public class AvatarService {
                 BufferedInputStream bis = new BufferedInputStream(is, BUFFER_SIZE);
                 ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             BufferedImage pic = ImageIO.read(bis);
-            //int height = (int)((double)pic.getHeight() / pic.getWidth() * 100);
             int scaledWidth = pic.getWidth() / avatarScaling;
             int scaledHeight = pic.getHeight() / avatarScaling;
 

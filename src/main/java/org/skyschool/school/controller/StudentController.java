@@ -91,7 +91,6 @@ public class StudentController {
     //DELETE http://localhost:8080/student/{id}
     @DeleteMapping("/{id}")
     public ResponseEntity<Student> deleteStudent(@PathVariable long id) {
-        Student findStudent = sService.findStudent(id);
         boolean checkRemove = sService.removeStudent(id);
         if(!checkRemove){
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

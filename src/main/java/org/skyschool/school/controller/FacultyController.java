@@ -84,8 +84,8 @@ public class FacultyController {
 
     //POST http://localhost:8080/faculty
     @PostMapping
-    public Faculty createFaculty(@RequestBody Faculty faculty) {
-        return facultyService.addFaculty(faculty);
+    public ResponseEntity<Faculty> createFaculty(@RequestBody Faculty faculty) {
+        return ResponseEntity.ok(facultyService.addFaculty(faculty));
     }
 
     //DELETE http://localhost:8080/faculty/{id}
