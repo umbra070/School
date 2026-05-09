@@ -26,14 +26,14 @@ public class Avatar {
 
     @Override
     public boolean equals(Object obj) {
-        if(obj == null){
+        if (obj == null) {
             return false;
         }
-        if(obj.getClass() != this.getClass()){
+        if (obj.getClass() != this.getClass()) {
             return false;
         }
         Avatar a = (Avatar) obj;
-        if(!a.mediaType.equals(this.mediaType) || !Objects.equals(a.fileSize, this.fileSize)){
+        if (!a.mediaType.equals(this.mediaType) || !Objects.equals(a.fileSize, this.fileSize)) {
             return false;
         }
         return a.data == this.data;
@@ -41,7 +41,7 @@ public class Avatar {
 
     @Override
     public String toString() {
-        return String.format("id:%d|name:%s|size:%d|media type:%s");
+        return String.format("id:%d|name:%s|size:%d|media type:%s", this.id, this.fileName, this.fileSize, this.mediaType);
     }
 
     public byte[] getData() {

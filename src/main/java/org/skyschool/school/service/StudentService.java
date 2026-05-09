@@ -1,5 +1,6 @@
 package org.skyschool.school.service;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
 import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
 import org.skyschool.school.repos.FacultyRepository;
@@ -23,6 +24,21 @@ public class StudentService {
     @Transactional
     public Student addStudent(Student student) {
         return sRepository.save(student);
+    }
+
+    @Transactional
+    public Integer getCount(){
+        return sRepository.getStudentsCount();
+    }
+
+    @Transactional
+    public Set<Student> getLastStudents(){
+        return sRepository.getFiveLastStudents();
+    }
+
+    @Transactional
+    public Integer getAverageStudentAge(){
+        return sRepository.getAverageAge();
     }
 
     @Transactional

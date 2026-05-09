@@ -18,4 +18,13 @@ public interface StudentsRepository extends JpaRepository<Student, Long> {
 
     @Query("SELECT s FROM Student s WHERE s.age = :age")
     Set<Student> findStudentsByAge(@Param("age") int age);
+
+    @Query("SELECT COUNT(*) FROM Student")
+    Integer getStudentsCount();
+
+    @Query("SELECT AVG(age) FROM Student")
+    Integer getAverageAge();
+
+    @Query("SELECT s FROM Student s ORDER BY s.id  DESC LIMIT 5")
+    public Set<Student> getFiveLastStudents();
 }

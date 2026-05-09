@@ -103,4 +103,22 @@ public class StudentController {
     public ResponseEntity<Set<Student>> getStudentsByRange(@RequestParam int min, @RequestParam int max) {
         return ResponseEntity.ok(sService.findStudentsByRange(min, max));
     }
+
+    //GET http://localhost:8080/student/last/5
+    @GetMapping("/last/5")
+    public ResponseEntity<Set<Student>> getLastFiveStudents(){
+        return ResponseEntity.ok(sService.getLastStudents());
+    }
+
+    //GET http://localhost:8080/student/age/average
+    @GetMapping("/age/average")
+    public ResponseEntity<Integer> getAverageAge(){
+        return ResponseEntity.ok(sService.getAverageStudentAge());
+    }
+
+    //GET http://localhost:8080/student/count
+    @GetMapping("/count")
+    public ResponseEntity<Integer> getStudentsCount(){
+        return ResponseEntity.ok(sService.getCount());
+    }
 }

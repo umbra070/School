@@ -10,10 +10,12 @@ import org.skyschool.school.repos.StudentsRepository;
 import org.skyschool.school.service.AvatarService;
 import org.skyschool.school.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.assertj.core.api.Assertions;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.mock.web.MockMultipartFile;
@@ -27,6 +29,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Base64;
+import java.util.Set;
 
 @DisplayName("Avatar endpoints test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -46,6 +49,10 @@ public class AvatarControllerTestWithDb {
     private Avatar testAvatar;
     private long testStudentId;
     private MockMultipartFile testMultiPartFile;
+    @Value("${avatar.page.size.min}")
+    private int pageMinSize;
+    @Value("${avatar.page.size.max}")
+    private int pageMaxSize;
 
     @LocalServerPort
     private int port;
@@ -136,6 +143,47 @@ public class AvatarControllerTestWithDb {
         aService.saveAvatar(testStudentId, testMultiPartFile);
         ResponseEntity<Void> responseEntity = this.testRestTemplate.exchange("http://localhost:" + port + "/avatar/" + testStudentId, HttpMethod.DELETE, null, void.class);
         Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+    }
+
+    @Test
+    @DisplayName("Testing pagination of Avatar entities")
+    public void testPaginationOfAvatarEntities() throws Exception {
+        int validMinPage = 0;
+        int validMinSize = 10;
+        int validMaxPage = 2;
+        int validMaxSize = 500;
+        int invalidMinPage = -3;
+        int invalidMinSize = -5;
+        int invalidMaxPage = 10000;
+        int invalidMaxSize = 2000;
+        for (int i = 0; i <= 1000; i++) {
+            Student s = new Student("test2 student test2" + i, 10 + i);
+            sRepository.save(s);
+            Avatar a = new Avatar();
+            a.setFileSize((long) createTestImage(1920, 1080, "jpg").length);
+            a.setData(createTestImage(1920, 1080, "jpg"));
+            a.setStudent(s);
+            a.setMediaType("image/jpeg");
+            a.setFileName(s.getId().toString() + ".jpg");
+            aRepository.save(a);
+        }
+        int totalAvatarsCount = aRepository.totalAvatarsCount();
+        ResponseEntity<Set<Avatar>> response = this.testRestTemplate.exchange("http://localhost:" + port + "/avatar/page?page=" + validMinPage + "&size=" + validMinSize, HttpMethod.GET, null, new ParameterizedTypeReference<Set<Avatar>>() {
+        });
+        Assertions.assertThat(response.getBody().size()).isEqualTo(validMinSize);
+        System.out.println("Actual response: " + response.getBody());
+        ResponseEntity<Set<Avatar>> responseMax = this.testRestTemplate.exchange("http://localhost:" + port + "/avatar/page?page=" + validMaxPage + "&size=" + validMaxSize, HttpMethod.GET, null, new ParameterizedTypeReference<Set<Avatar>>() {
+        });
+        System.out.println("Actual response: " + responseMax.getBody());
+        Assertions.assertThat(responseMax.getBody().size()).isEqualTo(Math.min(pageMaxSize, totalAvatarsCount - validMaxPage * pageMaxSize));
+        ResponseEntity<Set<Avatar>> invalidResponseMin = this.testRestTemplate.exchange("http://localhost:" + port + "/avatar/page?page=" + invalidMinPage + "&size=" + invalidMinSize, HttpMethod.GET, null, new ParameterizedTypeReference<Set<Avatar>>() {
+        });
+        System.out.println("Actual response: " + invalidResponseMin.getBody());
+        Assertions.assertThat(invalidResponseMin.getBody().size()).isEqualTo(validMinSize);
+        ResponseEntity<Set<Avatar>> invalidResponseMax = this.testRestTemplate.exchange("http://localhost:" + port + "/avatar/page?page=" + invalidMaxPage + "&size=" + invalidMaxSize, HttpMethod.GET, null, new ParameterizedTypeReference<Set<Avatar>>() {
+        });
+        System.out.println("Actual response: " + invalidResponseMax.getBody());
+        Assertions.assertThat(invalidResponseMax.getBody().size()).isEqualTo(Math.min(pageMaxSize, totalAvatarsCount - validMaxPage * pageMaxSize));
     }
 
     //Содержит строковое представление jpeg изображения белого квадрата,

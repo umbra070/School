@@ -6,6 +6,7 @@ import org.skyschool.school.repos.AvatarRepository;
 import org.skyschool.school.repos.StudentsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -17,6 +18,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Set;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 
@@ -38,6 +40,10 @@ public class AvatarService {
     private int heightMin;
     @Value("${avatar.width.min}")
     private int widthMin;
+    @Value("${avatar.page.size.min}")
+    private int pageMinSize;
+    @Value("${avatar.page.size.max}")
+    private int pageMaxSize;
 
     @Transactional
     public Avatar findAvatar(Long studentId) {
@@ -89,12 +95,35 @@ public class AvatarService {
     @Transactional
     public boolean deleteAvatar(Long studentId) throws IOException {
         Avatar foundAvatar = aRepository.findAvatarByStudentId(studentId).orElse(null);
-        if(foundAvatar == null){
+        if (foundAvatar == null) {
             return false;
         }
         Files.deleteIfExists(Path.of(avatarPath, foundAvatar.getFileName()));
         aRepository.delete(foundAvatar);
         return true;
+    }
+
+    @Transactional
+    public Set<Avatar> getAvatarsPage(int page, int size) {
+        int avatarsCount = aRepository.totalAvatarsCount();
+        System.out.println("totalAvatarsCount: " + avatarsCount);
+        System.out.println("Original page: " + page + ", size: " + size);
+        if (size < pageMinSize) {
+            size = pageMinSize;
+        }
+        if (size > pageMaxSize) {
+            size = pageMaxSize;
+        }
+        int maxPage = (avatarsCount - 1) / size;
+        if (page > maxPage) {
+            page = maxPage;
+        }
+        if (page < 0) {
+            page = 0;
+        }
+        System.out.println("Corrected page: " + page + ", size: " + size);
+        PageRequest pageRequest = PageRequest.of(page, size);
+        return aRepository.findAll(pageRequest).toSet();
     }
 
     private byte[] minimizePic(byte[] data, String extension) throws IOException {

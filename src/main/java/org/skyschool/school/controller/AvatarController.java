@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/avatar")
@@ -75,6 +76,15 @@ public class AvatarController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Student with those ID " + studentId + " not found");
         }
     }
+
+    //GET http://localhost:8080/avatar/page?page={page}&size={size}
+    @GetMapping("/page")
+    public ResponseEntity<Set<Avatar>> getAvatarsPage(
+            @RequestParam int page,
+            @RequestParam int size) {
+        return ResponseEntity.ok(service.getAvatarsPage(page, size));
+    }
+
 
     //DELETE http://localhost:8080/avatar/{studentId}
     @DeleteMapping("/{studentId}")
