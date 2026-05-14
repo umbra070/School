@@ -4,6 +4,8 @@ import org.skyschool.school.model.Avatar;
 import org.skyschool.school.model.Student;
 import org.skyschool.school.repos.AvatarRepository;
 import org.skyschool.school.repos.StudentsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +33,9 @@ public class AvatarService {
     @Autowired
     private StudentsRepository sRepository;
 
+    private Logger logger = LoggerFactory.getLogger(AvatarService.class);
+
+
     @Value("${path.to.avatars.folder}")
     private String avatarPath;
 
@@ -47,20 +52,40 @@ public class AvatarService {
 
     @Transactional
     public Avatar findAvatar(Long studentId) {
-        return aRepository.findAvatarByStudentId(studentId).orElse(null);
+        Avatar foundAvatar = aRepository.findAvatarByStudentId(studentId).orElse(null);
+        logger.info("Service: AvatarService || Method: findAvatar || Input data(Long studentId):{} " +
+                "|| Output data(Avatar foundAvatar): [{}]", studentId, foundAvatar);
+        return foundAvatar;
     }
 
     public Path getFullPath(Avatar avatar) {
         if (avatar == null || avatar.getFileName() == null) {
+            logger.warn("Service: AvatarService || Method: getFullPath || Input data(Avatar avatar): [{}] " +
+                    "|| Output data(Path filePath): null " +
+                    "|| Description: Avatar entity or file name is missing", avatar);
             return null;
         }
-        return Path.of(avatarPath, avatar.getFileName());
+        Path filePath = Path.of(avatarPath, avatar.getFileName());
+        logger.info("Service: AvatarService || Method: getFullPath || Input data(Avatar avatar): [{}] " +
+                "|| Output data(Path filePath): [{}]", avatar, filePath);
+        return filePath;
     }
 
     @Transactional
     public boolean saveAvatar(Long studentId, MultipartFile file) throws IOException {
         Student foundStudent = sRepository.findById(studentId).orElse(null);
+        if(file == null || file.getSize() == 0){
+            logger.warn("Service: AvatarService || Method: saveAvatar " +
+                    "|| Input data(Long studentId, MultipartFile file): {}, nullOrEmpty , " +
+                    "|| Output data(boolean): false " +
+                    "|| Description: File is null or empty", studentId);
+            return false;
+        }
         if (foundStudent == null) {
+            logger.warn("Service: AvatarService || Method: saveAvatar " +
+                    "|| Input data(Long studentId, MultipartFile file): {} , " +
+                    "[File name: {} , File size: {} , File type: {}] || Output data(boolean): false " +
+                    "|| Description: No such Student entity", studentId, file.getName(), file.getSize(), file.getContentType());
             return false;
         }
         Avatar foundAvatar = aRepository.findAvatarByStudentId(studentId).orElse(new Avatar());
@@ -85,6 +110,9 @@ public class AvatarService {
         foundAvatar.setFileSize(file.getSize());
         foundAvatar.setData(minimizePic(file.getBytes(), extension));
         aRepository.save(foundAvatar);
+        logger.info("Service: AvatarService || Method: saveAvatar " +
+                "|| Input data(Long studentId, MultipartFile file): {}, [Name: {}, Size:{}, ContentType:{}] " +
+                "|| Output data(boolean): true", studentId, file.getName(), file.getSize(), file.getContentType() );
         return true;
     }
 
@@ -96,18 +124,21 @@ public class AvatarService {
     public boolean deleteAvatar(Long studentId) throws IOException {
         Avatar foundAvatar = aRepository.findAvatarByStudentId(studentId).orElse(null);
         if (foundAvatar == null) {
+            logger.warn("Service: AvatarService || Method: deleteAvatar || Input data(Long studentId): {} " +
+                    "|| Output data(boolean): false " +
+                    "|| Description: No such Avatar entity in DB", studentId);
             return false;
         }
         Files.deleteIfExists(Path.of(avatarPath, foundAvatar.getFileName()));
         aRepository.delete(foundAvatar);
+        logger.info("Service: AvatarService || Method: deleteAvatar || Input data(Long studentId): {} " +
+                "|| Output data(boolean): true", studentId);
         return true;
     }
 
     @Transactional
     public Set<Avatar> getAvatarsPage(int page, int size) {
         int avatarsCount = aRepository.totalAvatarsCount();
-        System.out.println("totalAvatarsCount: " + avatarsCount);
-        System.out.println("Original page: " + page + ", size: " + size);
         if (size < pageMinSize) {
             size = pageMinSize;
         }
@@ -121,9 +152,12 @@ public class AvatarService {
         if (page < 0) {
             page = 0;
         }
-        System.out.println("Corrected page: " + page + ", size: " + size);
         PageRequest pageRequest = PageRequest.of(page, size);
-        return aRepository.findAll(pageRequest).toSet();
+        Set<Avatar> avatarsByPage = aRepository.findAll(pageRequest).toSet();
+        logger.info("Service: AvatarService || Method: getAvatarsPage " +
+                "|| Input data(int page, int size): [page = {}, size = {}] " +
+                "|| Output data(Set<Avatar>): [Collection size: {}]", page, size, avatarsByPage.size());
+        return avatarsByPage;
     }
 
     private byte[] minimizePic(byte[] data, String extension) throws IOException {
@@ -131,8 +165,6 @@ public class AvatarService {
         int height = heightMin;
         int width = widthMin;
         int ratio;
-        System.out.println("original picture length:" + data.length);
-
         try (
                 InputStream is = new ByteArrayInputStream(data);
                 BufferedInputStream bis = new BufferedInputStream(is, BUFFER_SIZE);
@@ -140,12 +172,10 @@ public class AvatarService {
             BufferedImage pic = ImageIO.read(bis);
             int scaledWidth = pic.getWidth() / avatarScaling;
             int scaledHeight = pic.getHeight() / avatarScaling;
-
             if (scaledWidth < widthMin && scaledHeight < heightMin) {
                 double scaleByWidth = (double) widthMin / pic.getWidth();
                 double scaleByHeight = (double) heightMin / pic.getHeight();
                 double scale = Math.max(scaleByWidth, scaleByHeight);
-
                 width = (int) (pic.getWidth() * scale);
                 height = (int) (pic.getHeight() * scale);
             } else if (scaledWidth < widthMin) {
@@ -158,7 +188,6 @@ public class AvatarService {
                 width = scaledWidth;
                 height = scaledHeight;
             }
-
             BufferedImage smallPic = new BufferedImage(width, height, pic.getType());
             Graphics2D graphics = smallPic.createGraphics();
             graphics.drawImage(pic, 0, 0, width, height, null);
@@ -166,7 +195,9 @@ public class AvatarService {
             ImageIO.write(smallPic, extension, baos);
             newData = baos.toByteArray();
         }
-        System.out.println("minimize pic length:" + newData.length);
+        logger.info("Service: AvatarService || Method: minimizePic " +
+                "|| Input data(byte[] data, String extension): [size = {}, extension = {}] " +
+                "|| Output data(byte[] newData): [size = {}]", data.length, extension, newData.length);
         return newData;
     }
 }

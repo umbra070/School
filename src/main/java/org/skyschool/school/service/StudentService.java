@@ -5,6 +5,8 @@ import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
 import org.skyschool.school.repos.FacultyRepository;
 import org.skyschool.school.repos.StudentsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,121 +23,189 @@ public class StudentService {
     @Autowired
     private FacultyRepository fRepository;
 
+    Logger logger = LoggerFactory.getLogger(StudentService.class);
+
     @Transactional
     public Student addStudent(Student student) {
+        if(student == null || student.getName().isEmpty()){
+            logger.warn("Service: StudentService || Method: addStudent || Input data(Student student): [{}] || Output data(Student student): null || Description: Incorrect input data(Empty Student entity or empty student's name", student);
+            return null;
+        }
+        logger.info("Service: StudentService || Method: addStudent || Input data(Student student): [{}] || Output data(Student student): [{}]", student, student);
         return sRepository.save(student);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Integer getCount(){
-        return sRepository.getStudentsCount();
+        Integer count = sRepository.getStudentsCount();
+        logger.info("Service: StudentService || Method: getCount || Input data(void): - || Output data(Integer): {}", count);
+        return count;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Set<Student> getLastStudents(){
-        return sRepository.getFiveLastStudents();
+        Set<Student> lastStudents = sRepository.getFiveLastStudents();
+        logger.info("Service: StudentService || Method: getLastStudents || Input data(void): - || Output data(Set<Student> lastStudents): count: {}", lastStudents.size());
+        return lastStudents;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Integer getAverageStudentAge(){
-        return sRepository.getAverageAge();
+        Integer averageAge = sRepository.getAverageAge();
+        logger.info("Service: StudentService || Method: getAverageStudentAge || Input data(void): - || Output data(Integer averageAge): {}", averageAge);
+        return averageAge;
     }
 
     @Transactional
     public Student editStudent(Student student) {
-        Student dbStudent = sRepository.findById(student.getId()).orElse(null);
-        if (dbStudent == null) {
+        if(student == null || student.getName().isEmpty() || student.getId() == null){
+            logger.warn("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
+                    "|| Output data(Student foundStudent): null " +
+                    "|| Description: Incorrect input data - Student entity, or name, or ID cannot be empty", student);
             return null;
         }
-        dbStudent.setAge(student.getAge());
-        dbStudent.setName(student.getName());
-        sRepository.save(dbStudent);
-        return dbStudent;
+        Student foundStudent = sRepository.findById(student.getId()).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
+                    "|| Output data(Student foundStudent): null " +
+                    "|| Description: no such student in DB with this ID: {}", student, student.getId());
+            return null;
+        }
+        foundStudent.setAge(student.getAge());
+        foundStudent.setName(student.getName());
+        sRepository.save(foundStudent);
+        logger.info("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
+                "|| Output data(Student foundStudent): [{}] ", student, foundStudent);
+        return foundStudent;
     }
 
     @Transactional(readOnly = true)
     public Student findStudent(long id) {
-        return sRepository.findById(id).orElse(null);
+        Student foundStudent = sRepository.findById(id).orElse(null);
+        if(foundStudent == null){
+            logger.warn("Service: StudentService || Method: findStudent || Input data(Long id): {} " +
+                    "|| Output data(Student foundStudent): null " +
+                    "|| Description: no such student in DB", id);
+            return null;
+        }
+        logger.info("Service: StudentService || Method: findStudent || Input data(Long id): {} " +
+                "|| Output data(Student foundStudent): [{}]", id, foundStudent);
+        return foundStudent;
     }
 
     @Transactional(readOnly = true)
     public HashSet<Student> getStudents() {
-        return new HashSet<>(sRepository.findAll());
+        HashSet<Student> students = new HashSet<>(sRepository.findAll());
+        logger.info("Service: StudentService || Method: getStudents || Input data(void): - " +
+                "|| Output data(HashSet<Student> students): {}", students.size());
+        return students;
     }
 
     @Transactional
     public boolean removeStudent(Long id) {
-        Student dbStudent = sRepository.findById(id).orElse(null);
-        if (dbStudent == null) {
+        Student foundStudent = sRepository.findById(id).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: removeStudent || Input data(Long id): {} " +
+                    "|| Output data(boolean): false || Description: no such Student entity", id);
             return false;
         }
-        if (dbStudent.isFacultyPresent()) {
-            dbStudent.getFaculty().removeStudent(dbStudent);
-            fRepository.save(dbStudent.getFaculty());
+        if (foundStudent.isFacultyPresent()) {
+            foundStudent.getFaculty().removeStudent(foundStudent);
+            fRepository.save(foundStudent.getFaculty());
         }
         sRepository.deleteById(id);
+        logger.info("Service: StudentService || Method: removeStudent || Input data(Long id): {} " +
+                "|| Output data(boolean): true",id);
         return true;
     }
 
     @Transactional(readOnly = true)
     public boolean checkEntities(Long studentId, Long facultyId) {
-        Student dbStudent = sRepository.findById(studentId).orElse(null);
-        Faculty dbFaculty = fRepository.findById(facultyId).orElse(null);
-        return dbStudent != null && dbFaculty != null;
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        return foundStudent != null && foundFaculty != null;
     }
 
     @Transactional
     public boolean addRelationship(Long studentId, Long facultyId) {
-        Student dbStudent = sRepository.findById(studentId).orElse(null);
-        Faculty dbFaculty = fRepository.findById(facultyId).orElse(null);
-        if (dbStudent == null || dbFaculty == null) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        if (foundStudent == null || foundFaculty == null) {
+            logger.warn("Service: StudentService || Method: addRelationship " +
+                    "|| Input data(Long studentId, Long facultyId): [{}, {}] || Output data(boolean): false " +
+                    "|| Description: no such student or faculty", studentId, facultyId);
             return false;
         }
-        dbFaculty.addStudent(dbStudent);
-        dbStudent.setFaculty(dbFaculty);
-        fRepository.save(dbFaculty);
-        sRepository.save(dbStudent);
+        foundFaculty.addStudent(foundStudent);
+        foundStudent.setFaculty(foundFaculty);
+        fRepository.save(foundFaculty);
+        sRepository.save(foundStudent);
+        logger.info("Service: StudentService || Method: addRelationship " +
+                "|| Input data(Long studentId, Long facultyId): [{}, {}] " +
+                "|| Output data(boolean): true", studentId, facultyId);
         return true;
     }
 
     @Transactional
     public boolean removeRelationship(Long studentId) {
-        Student dbStudent = sRepository.findById(studentId).orElse(null);
-        if (dbStudent == null) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: removeRelationship " +
+                    "|| Input data(Long studentId): {} || Output data(boolean): false " +
+                    "|| Description: no such student", studentId);
             return false;
         }
         Faculty faculty;
-        if (!dbStudent.isFacultyPresent()) {
+        if (!foundStudent.isFacultyPresent()) {
+            logger.warn("Service: StudentService || Method: removeRelationship " +
+                    "|| Input data(Long studentId): {} || Output data(boolean): false " +
+                    "|| Description: no such faculty associated", studentId);
             return false;
         }
-        faculty = dbStudent.getFaculty();
-        faculty.removeStudent(dbStudent);
-        dbStudent.setFaculty(null);
+        faculty = foundStudent.getFaculty();
+        faculty.removeStudent(foundStudent);
+        foundStudent.setFaculty(null);
         fRepository.save(faculty);
-        sRepository.save(dbStudent);
+        sRepository.save(foundStudent);
+        logger.info("Service: StudentService || Method: removeRelationship " +
+                "|| Input data(Long studentId): {} || Output data(boolean): true", studentId);
         return true;
     }
 
     @Transactional(readOnly = true)
-    public Faculty getFacultyFromStudent(Long id) {
-        Student dbStudent = sRepository.findById(id).orElse(null);
-        if (dbStudent == null) {
+    public Faculty getFacultyFromStudent(Long studentId) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        if (foundStudent == null) {
+            logger.info("Service: StudentService || Method: getFacultyFromStudent || Input data(Long studentId): {} " +
+                    "|| Output data(Faculty foundStudent.getFaculty()): null " +
+                    "|| Description: no such Student", studentId);
             return null;
         }
-        if (!dbStudent.isFacultyPresent()) {
+        if (!foundStudent.isFacultyPresent()) {
+            logger.info("Service: StudentService || Method: getFacultyFromStudent || Input data(Long studentId): {} " +
+                    "|| Output data(Faculty foundStudent.getFaculty()): null " +
+                    "|| Description: no such Faculty associated with this student", studentId);
             return null;
         }
-        return dbStudent.getFaculty();
+        logger.info("Service: StudentService || Method: getFacultyFromStudent || Input data(Long studentId): {} " +
+                "|| Output data(Faculty foundStudent.getFaculty()): [{}]", studentId, foundStudent.getFaculty());
+        return foundStudent.getFaculty();
     }
 
     @Transactional(readOnly = true)
     public Set<Student> findStudentByAge(int age) {
-        return sRepository.findStudentsByAge(age);
+        Set<Student> foundStudents = sRepository.findStudentsByAge(age);
+        logger.info("Service: StudentService || Method: findStudentByAge || Input data(int age): {} " +
+                "|| Output data(Set<Student> foundStudents): count = {}", age, foundStudents.size());
+        return foundStudents;
     }
 
     @Transactional(readOnly = true)
     public Set<Student> findStudentsByRange(int min, int max) {
-        return sRepository.findStudentsByAgeRange(min, max);
+        Set<Student> foundStudents = sRepository.findStudentsByAgeRange(min, max);
+        logger.info("Service: StudentService || Method: findStudentsByRange || Input data(int min, int max): [{}, {}] " +
+                "|| Output data(Set<Student> foundStudents): count = {}", min, max, foundStudents.size());
+        return foundStudents;
     }
 
 }

@@ -4,6 +4,8 @@ import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
 import org.skyschool.school.repos.FacultyRepository;
 import org.skyschool.school.repos.StudentsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,73 +23,107 @@ public class FacultyService {
     @Autowired
     private StudentsRepository sRepository;
 
+    Logger logger = LoggerFactory.getLogger(FacultyService.class);
+
     @Transactional(readOnly = true)
     public HashSet<Faculty> getAll() {
-        return new HashSet<>(fRepository.findAll());
+        HashSet<Faculty> foundFaculties = new HashSet<>(fRepository.findAll());
+        logger.info("Service: FacultyService || Method: getAll || Input data(void): - " +
+                "|| Output data(HashSet<Faculty>): [count: {}]", foundFaculties.size());
+        return foundFaculties;
     }
 
     @Transactional
     public Faculty addFaculty(Faculty faculty) {
-        return fRepository.save(faculty);
+        Faculty foundFaculty = fRepository.save(faculty);
+        logger.info("Service: FacultyService || Method: addFaculty || Input data(Faculty faculty): [{}] " +
+                "|| Output data(Faculty faculty): [{}]", faculty, foundFaculty);
+        return foundFaculty;
     }
 
     @Transactional(readOnly = true)
     public Faculty findFaculty(long id) {
-        return fRepository.findById(id).orElse(null);
+        Faculty foundFaculty = fRepository.findById(id).orElse(null);
+        logger.info("Service: FacultyService || Method: findFaculty || Input data(Long id): {} " +
+                "|| Output data(Faculty foundFaculty): [{}]", id, foundFaculty);
+        return foundFaculty;
     }
 
     @Transactional
     public Faculty editFaculty(Faculty faculty) {
-        return fRepository.save(faculty);
+        Faculty editedFaculty = fRepository.save(faculty);
+        logger.info("Service: FacultyService || Method: editFaculty || Input data(Faculty faculty): [{}] " +
+                "|| Output data(Faculty editedFaculty): [{}]", faculty, editedFaculty);
+        return editedFaculty;
     }
 
     @Transactional
-    public boolean deleteFaculty(long id) {
-        Faculty dbFaculty = fRepository.findById(id).orElse(null);
-        if (dbFaculty == null) {
+    public boolean deleteFaculty(long facultyId) {
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        if (foundFaculty == null) {
+            logger.warn("Service: FacultyService || Method: deleteFaculty || Input data(long facultyId): {} " +
+                    "|| Output data(boolean): false " +
+                    "|| Description: No such faculty", facultyId);
             return false;
         }
-        dbFaculty.getStudents().stream()
+        foundFaculty.getStudents().stream()
                 .peek(s -> s.setFaculty(null))
                 .map(sRepository::save)
                 .collect(Collectors.toSet());
-        fRepository.deleteById(id);
+        fRepository.deleteById(facultyId);
+        logger.info("Service: FacultyService || Method: deleteFaculty || Input data(long facultyId): {} " +
+                "|| Output data(boolean): true", facultyId);
         return true;
     }
 
     @Transactional(readOnly = true)
     public Set<Faculty> findFacultyByColor(String color) {
-        return fRepository.findAll().stream()
+        Set<Faculty> foundFaculty = fRepository.findAll().stream()
                 .filter(f -> Objects.equals(color, f.getColor()))
                 .collect(Collectors.toSet());
+        logger.info("Service: FacultyService || Method: findFacultyByColor || Input data(String color): {} " +
+                "|| Output data(Set<Faculty>): count: {}", color, foundFaculty.size());
+        return foundFaculty;
     }
 
     @Transactional(readOnly = true)
     public Set<Student> findStudentsInFaculty(Long facultyId) {
         if (!fRepository.existsById(facultyId)) {
+            logger.warn("Service: FacultyService || Method: findStudentsInFaculty || Input data(Long facultyId): {} " +
+                    "|| Output data(Set<Student>): null " +
+                    "|| Description: No such faculty", facultyId);
             return null;
         }
-        return new HashSet<>(fRepository.getStudents(facultyId));
+        Set<Student> foundStudents = new HashSet<>(fRepository.getStudents(facultyId));
+        logger.info("Service: FacultyService || Method: findStudentsInFaculty || Input data(Long facultyId): {} " +
+                "|| Output data(Set<Student>): count: {} ", facultyId, foundStudents.size());
+        return foundStudents;
     }
 
     @Transactional(readOnly = true)
     public boolean checkEntities(Long studentId, Long facultyId) {
-        Student dbStudent = sRepository.findById(studentId).orElse(null);
-        Faculty dbFaculty = fRepository.findById(facultyId).orElse(null);
-        return dbStudent != null && dbFaculty != null;
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        return foundStudent != null && foundFaculty != null;
     }
 
     @Transactional
     public boolean addRelationship(Long studentId, Long facultyId) {
-        Student dbStudent = sRepository.findById(studentId).orElse(null);
-        Faculty dbFaculty = fRepository.findById(facultyId).orElse(null);
-        if (dbStudent == null || dbFaculty == null) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        if (foundStudent == null || foundFaculty == null) {
+            logger.warn("Service: FacultyService || Method: addRelationship " +
+                    "|| Input data(Long studentId, Long facultyId): [{} , {}] || Output data(boolean): false " +
+                    "|| Description: No such student or faculty", studentId, facultyId);
             return false;
         }
-        dbFaculty.addStudent(dbStudent);
-        dbStudent.setFaculty(dbFaculty);
-        fRepository.save(dbFaculty);
-        sRepository.save(dbStudent);
+        foundFaculty.addStudent(foundStudent);
+        foundStudent.setFaculty(foundFaculty);
+        fRepository.save(foundFaculty);
+        sRepository.save(foundStudent);
+        logger.info("Service: FacultyService || Method: addRelationship " +
+                "|| Input data(Long studentId, Long facultyId): [{} , {}] " +
+                "|| Output data(boolean): true", studentId, facultyId);
         return true;
     }
 }
