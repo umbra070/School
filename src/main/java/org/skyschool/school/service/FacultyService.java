@@ -21,7 +21,7 @@ public class FacultyService {
     @Autowired
     private StudentsRepository sRepository;
 
-    Logger logger = LoggerFactory.getLogger(FacultyService.class);
+    private final Logger logger = LoggerFactory.getLogger(FacultyService.class);
 
     @Transactional(readOnly = true)
     public HashSet<Faculty> getAll() {
