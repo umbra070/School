@@ -98,4 +98,10 @@ public class FacultyController {
         }
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
+
+    //GET http://localhost:8080/faculty/name/getLongest
+    @GetMapping("/name/getLongest")
+    public ResponseEntity<String> getLongestName(){
+        return ResponseEntity.ok(facultyService.getLongestFacultyName());
+    }
 }

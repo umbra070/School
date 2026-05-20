@@ -10,9 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -125,5 +123,14 @@ public class FacultyService {
                 "|| Input data(Long studentId, Long facultyId): [{} , {}] " +
                 "|| Output data(boolean): true", studentId, facultyId);
         return true;
+    }
+
+    @Transactional(readOnly = true)
+    public String getLongestFacultyName(){
+        List<Faculty> foundFaculties = fRepository.findAll();
+        return foundFaculties.parallelStream()
+                .map(Faculty::getName)
+                .max(Comparator.comparingInt(String::length))
+                .orElse(null);
     }
 }

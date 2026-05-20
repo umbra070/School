@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @RestController
@@ -113,7 +115,8 @@ public class StudentController {
     //GET http://localhost:8080/student/age/average
     @GetMapping("/age/average")
     public ResponseEntity<Integer> getAverageAge(){
-        return ResponseEntity.ok(sService.getAverageStudentAge());
+        //return ResponseEntity.ok(sService.getAverageStudentAge());
+        return ResponseEntity.ok(sService.getAverageAge());
     }
 
     //GET http://localhost:8080/student/count
@@ -121,4 +124,14 @@ public class StudentController {
     public ResponseEntity<Integer> getStudentsCount(){
         return ResponseEntity.ok(sService.getCount());
     }
+
+    //GET http://localhost:8080/student/list/list_by_first_char?char={firstChar}
+    @GetMapping("/list/list_by_first_char")
+    public ResponseEntity<List<String>> getListOfStudentsByFirstCharOfName(@RequestParam String firstChar){
+        if(Objects.isNull(firstChar) || firstChar.isEmpty()){
+            return ResponseEntity.ok(sService.getStudentsNamesByFirstChar());
+        }
+        return ResponseEntity.ok(sService.getStudentsNamesByFirstChar(firstChar));
+    }
+
 }

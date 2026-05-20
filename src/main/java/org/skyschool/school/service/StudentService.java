@@ -1,6 +1,5 @@
 package org.skyschool.school.service;
 
-import jakarta.persistence.criteria.CriteriaBuilder;
 import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
 import org.skyschool.school.repos.FacultyRepository;
@@ -11,19 +10,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class StudentService {
+
+    private final long COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS = 0;
+
     @Autowired
     private StudentsRepository sRepository;
     @Autowired
     private FacultyRepository fRepository;
 
-    Logger logger = LoggerFactory.getLogger(StudentService.class);
+    private final Logger logger = LoggerFactory.getLogger(StudentService.class);
 
     @Transactional
     public Student addStudent(Student student) {
@@ -193,6 +193,70 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
+    public List<String> getStudentsNamesByFirstChar(String firstChar){
+        if(firstChar.isEmpty()){
+            return List.of();
+        }
+        List<Student> foundStudents = sRepository.findAll();
+        List<String> filteredStudents;
+        if(foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS){
+            filteredStudents = foundStudents.parallelStream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.toUpperCase().startsWith(firstChar))
+                    .sorted()
+                    .collect(Collectors.toList());
+        }else{
+            filteredStudents = foundStudents.stream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.startsWith(firstChar))
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+        logger.info("Service: StudentService || Method: getStudentsNamesByFirstChar || Input data(String firstChar): {} || Output data(List<String>): counts: {}", firstChar, filteredStudents.size());
+        return filteredStudents;
+    }
+    //В рамках учебного пособия метод продублирован для использования с заранее заданными условиями фильтрации
+    @Transactional(readOnly = true)
+    public List<String> getStudentsNamesByFirstChar(){
+        List<Student> foundStudents = sRepository.findAll();
+        List<String> filteredStudents;
+        if(foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS){
+            filteredStudents = foundStudents.parallelStream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.startsWith("A") || n.startsWith("А"))
+                    .sorted()
+                    .collect(Collectors.toList());
+        }else{
+            filteredStudents = foundStudents.stream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.startsWith("A") || n.startsWith("А"))
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+        logger.info("Service: StudentService || Method: getStudentsNamesByFirstChar || Input data(void): - || Output data(List<String>): counts: {}", filteredStudents.size());
+        return filteredStudents;
+    }
+
+    @Transactional(readOnly = true)
+    public Integer getAverageAge(){
+        List<Student> foundStudents = sRepository.findAll();
+        double averageAge = foundStudents.parallelStream()
+                .mapToInt(Student::getAge)
+                .average()
+                .orElse(0.0);
+        logger.info("Service: StudentService || Method: getAverageAge || Input(void): - || Output(Integer): {}", (int) Math.round(averageAge));
+        return (int) Math.round(averageAge);
+    }
+
+    @Transactional(readOnly = true)
     public Set<Student> findStudentByAge(int age) {
         Set<Student> foundStudents = sRepository.findStudentsByAge(age);
         logger.info("Service: StudentService || Method: findStudentByAge || Input data(int age): {} " +
@@ -207,5 +271,4 @@ public class StudentService {
                 "|| Output data(Set<Student> foundStudents): count = {}", min, max, foundStudents.size());
         return foundStudents;
     }
-
 }
