@@ -1,30 +1,376 @@
 package org.skyschool.school.service;
 
+import org.skyschool.school.model.Faculty;
 import org.skyschool.school.model.Student;
+import org.skyschool.school.repos.FacultyRepository;
+import org.skyschool.school.repos.StudentsRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
+import java.util.*;
+import java.util.stream.Collectors;
 
+@Service
 public class StudentService {
-    private final HashMap<Long, Student> students = new HashMap<Long, Student>();
-    private long count = 0;
 
+    private final long COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS = 0;
+
+    @Autowired
+    private StudentsRepository sRepository;
+    @Autowired
+    private FacultyRepository fRepository;
+
+    private final Object syncTagForPrintingStudentsNames = new Object();
+
+    private final Logger logger = LoggerFactory.getLogger(StudentService.class);
+
+    @Transactional
     public Student addStudent(Student student) {
-        student.setId(count++);
-        return students.put(student.getId(), student);
-    }
-
-    public Student editStudent(Student student) {
-        if (!students.containsKey(student.getId())) {
+        if (student == null || student.getName().isEmpty()) {
+            logger.warn("Service: StudentService || Method: addStudent || Input data(Student student): [{}] || Output data(Student student): null || Description: Incorrect input data(Empty Student entity or empty student's name", student);
             return null;
         }
-        return students.put(student.getId(), student);
+        logger.info("Service: StudentService || Method: addStudent || Input data(Student student): [{}] || Output data(Student student): [{}]", student, student);
+        return sRepository.save(student);
     }
 
+    @Transactional(readOnly = true)
+    public Integer getCount() {
+        Integer count = sRepository.getStudentsCount();
+        logger.info("Service: StudentService || Method: getCount || Input data(void): - || Output data(Integer): {}", count);
+        return count;
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Student> getLastStudents() {
+        Set<Student> lastStudents = sRepository.getFiveLastStudents();
+        logger.info("Service: StudentService || Method: getLastStudents || Input data(void): - || Output data(Set<Student> lastStudents): count: {}", lastStudents.size());
+        return lastStudents;
+    }
+
+    @Transactional(readOnly = true)
+    public Integer getAverageStudentAge() {
+        Integer averageAge = sRepository.getAverageAge();
+        logger.info("Service: StudentService || Method: getAverageStudentAge || Input data(void): - || Output data(Integer averageAge): {}", averageAge);
+        return averageAge;
+    }
+
+    @Transactional
+    public Student editStudent(Student student) {
+        if (student == null || student.getName().isEmpty() || student.getId() == null) {
+            logger.warn("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
+                    "|| Output data(Student foundStudent): null " +
+                    "|| Description: Incorrect input data - Student entity, or name, or ID cannot be empty", student);
+            return null;
+        }
+        Student foundStudent = sRepository.findById(student.getId()).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
+                    "|| Output data(Student foundStudent): null " +
+                    "|| Description: no such student in DB with this ID: {}", student, student.getId());
+            return null;
+        }
+        foundStudent.setAge(student.getAge());
+        foundStudent.setName(student.getName());
+        sRepository.save(foundStudent);
+        logger.info("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
+                "|| Output data(Student foundStudent): [{}] ", student, foundStudent);
+        return foundStudent;
+    }
+
+    @Transactional(readOnly = true)
     public Student findStudent(long id) {
-        return students.get(id);
+        Student foundStudent = sRepository.findById(id).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: findStudent || Input data(Long id): {} " +
+                    "|| Output data(Student foundStudent): null " +
+                    "|| Description: no such student in DB", id);
+            return null;
+        }
+        logger.info("Service: StudentService || Method: findStudent || Input data(Long id): {} " +
+                "|| Output data(Student foundStudent): [{}]", id, foundStudent);
+        return foundStudent;
     }
 
-    public Student removeStudent(long id) {
-        return students.remove(id);
+    @Transactional(readOnly = true)
+    public HashSet<Student> getStudents() {
+        HashSet<Student> students = new HashSet<>(sRepository.findAll());
+        logger.info("Service: StudentService || Method: getStudents || Input data(void): - " +
+                "|| Output data(HashSet<Student> students): {}", students.size());
+        return students;
+    }
+
+    @Transactional
+    public boolean removeStudent(Long id) {
+        Student foundStudent = sRepository.findById(id).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: removeStudent || Input data(Long id): {} " +
+                    "|| Output data(boolean): false || Description: no such Student entity", id);
+            return false;
+        }
+        if (foundStudent.isFacultyPresent()) {
+            foundStudent.getFaculty().removeStudent(foundStudent);
+            fRepository.save(foundStudent.getFaculty());
+        }
+        sRepository.deleteById(id);
+        logger.info("Service: StudentService || Method: removeStudent || Input data(Long id): {} " +
+                "|| Output data(boolean): true", id);
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean checkEntities(Long studentId, Long facultyId) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        return foundStudent != null && foundFaculty != null;
+    }
+
+    @Transactional
+    public boolean addRelationship(Long studentId, Long facultyId) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        Faculty foundFaculty = fRepository.findById(facultyId).orElse(null);
+        if (foundStudent == null || foundFaculty == null) {
+            logger.warn("Service: StudentService || Method: addRelationship " +
+                    "|| Input data(Long studentId, Long facultyId): [{}, {}] || Output data(boolean): false " +
+                    "|| Description: no such student or faculty", studentId, facultyId);
+            return false;
+        }
+        foundFaculty.addStudent(foundStudent);
+        foundStudent.setFaculty(foundFaculty);
+        fRepository.save(foundFaculty);
+        sRepository.save(foundStudent);
+        logger.info("Service: StudentService || Method: addRelationship " +
+                "|| Input data(Long studentId, Long facultyId): [{}, {}] " +
+                "|| Output data(boolean): true", studentId, facultyId);
+        return true;
+    }
+
+    @Transactional
+    public boolean removeRelationship(Long studentId) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        if (foundStudent == null) {
+            logger.warn("Service: StudentService || Method: removeRelationship " +
+                    "|| Input data(Long studentId): {} || Output data(boolean): false " +
+                    "|| Description: no such student", studentId);
+            return false;
+        }
+        Faculty faculty;
+        if (!foundStudent.isFacultyPresent()) {
+            logger.warn("Service: StudentService || Method: removeRelationship " +
+                    "|| Input data(Long studentId): {} || Output data(boolean): false " +
+                    "|| Description: no such faculty associated", studentId);
+            return false;
+        }
+        faculty = foundStudent.getFaculty();
+        faculty.removeStudent(foundStudent);
+        foundStudent.setFaculty(null);
+        fRepository.save(faculty);
+        sRepository.save(foundStudent);
+        logger.info("Service: StudentService || Method: removeRelationship " +
+                "|| Input data(Long studentId): {} || Output data(boolean): true", studentId);
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public Faculty getFacultyFromStudent(Long studentId) {
+        Student foundStudent = sRepository.findById(studentId).orElse(null);
+        if (foundStudent == null) {
+            logger.info("Service: StudentService || Method: getFacultyFromStudent || Input data(Long studentId): {} " +
+                    "|| Output data(Faculty foundStudent.getFaculty()): null " +
+                    "|| Description: no such Student", studentId);
+            return null;
+        }
+        if (!foundStudent.isFacultyPresent()) {
+            logger.info("Service: StudentService || Method: getFacultyFromStudent || Input data(Long studentId): {} " +
+                    "|| Output data(Faculty foundStudent.getFaculty()): null " +
+                    "|| Description: no such Faculty associated with this student", studentId);
+            return null;
+        }
+        logger.info("Service: StudentService || Method: getFacultyFromStudent || Input data(Long studentId): {} " +
+                "|| Output data(Faculty foundStudent.getFaculty()): [{}]", studentId, foundStudent.getFaculty());
+        return foundStudent.getFaculty();
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getStudentsNamesByFirstChar(String firstChar) {
+        if (firstChar.isEmpty()) {
+            return List.of();
+        }
+        List<Student> foundStudents = sRepository.findAll();
+        List<String> filteredStudents;
+        if (foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS) {
+            filteredStudents = foundStudents.parallelStream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.toUpperCase().startsWith(firstChar))
+                    .sorted()
+                    .collect(Collectors.toList());
+        } else {
+            filteredStudents = foundStudents.stream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.startsWith(firstChar))
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+        logger.info("Service: StudentService || Method: getStudentsNamesByFirstChar || Input data(String firstChar): {} || Output data(List<String>): counts: {}", firstChar, filteredStudents.size());
+        return filteredStudents;
+    }
+
+    //В рамках учебного пособия метод продублирован для использования с заранее заданными условиями фильтрации
+    @Transactional(readOnly = true)
+    public List<String> getStudentsNamesByFirstChar() {
+        List<Student> foundStudents = sRepository.findAll();
+        List<String> filteredStudents;
+        if (foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS) {
+            filteredStudents = foundStudents.parallelStream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.startsWith("A") || n.startsWith("А"))
+                    .sorted()
+                    .collect(Collectors.toList());
+        } else {
+            filteredStudents = foundStudents.stream()
+                    .map(Student::getName)
+                    .filter(Objects::nonNull)
+                    .map(String::toUpperCase)
+                    .filter(n -> n.startsWith("A") || n.startsWith("А"))
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+        logger.info("Service: StudentService || Method: getStudentsNamesByFirstChar || Input data(void): - || Output data(List<String>): counts: {}", filteredStudents.size());
+        return filteredStudents;
+    }
+
+    @Transactional(readOnly = true)
+    public Integer getAverageAge() {
+        List<Student> foundStudents = sRepository.findAll();
+        double averageAge = foundStudents.parallelStream()
+                .mapToInt(Student::getAge)
+                .average()
+                .orElse(0.0);
+        logger.info("Service: StudentService || Method: getAverageAge || Input(void): - || Output(Integer): {}", (int) Math.round(averageAge));
+        return (int) Math.round(averageAge);
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Student> findStudentByAge(int age) {
+        Set<Student> foundStudents = sRepository.findStudentsByAge(age);
+        logger.info("Service: StudentService || Method: findStudentByAge || Input data(int age): {} " +
+                "|| Output data(Set<Student> foundStudents): count = {}", age, foundStudents.size());
+        return foundStudents;
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Student> findStudentsByRange(int min, int max) {
+        Set<Student> foundStudents = sRepository.findStudentsByAgeRange(min, max);
+        logger.info("Service: StudentService || Method: findStudentsByRange || Input data(int min, int max): [{}, {}] " +
+                "|| Output data(Set<Student> foundStudents): count = {}", min, max, foundStudents.size());
+        return foundStudents;
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public void printingStudentsParallel() {
+        int size = 2;
+        int totalCount = sRepository.totalStudentsCount();
+        int maxPage = (totalCount - 1) / size;
+
+        Thread secondThread = new Thread(() -> {
+            for (int i = 2; i <= maxPage; i += size * 3) {
+                PageRequest paginationSecondThread = PageRequest.of(i, size);
+                System.out.println(sRepository.findAll(paginationSecondThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        secondThread.start();
+
+        Thread thirdThread = new Thread(() -> {
+            for (int i = 4; i <= maxPage; i += size * 3) {
+                PageRequest paginationThirdThread = PageRequest.of(i, size);
+                System.out.println(sRepository.findAll(paginationThirdThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        thirdThread.start();
+        for (int i = 0; i <= maxPage; i += size * 3) {
+            PageRequest paginationMainThread = PageRequest.of(i, size);
+            System.out.println(sRepository.findAll(paginationMainThread)
+                    .toSet()
+                    .iterator()
+                    .next()
+                    .getName());
+        }
+
+        try{
+            secondThread.join();
+            thirdThread.join();
+        }catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void printingStudentsParallelSync() {
+        int size = 2;
+        int totalCount = sRepository.totalStudentsCount();
+        int maxPage = (totalCount - 1) / size;
+
+        Thread secondThread = new Thread(() -> {
+            for (int i = 2; i <= maxPage; i += size * 3) {
+                PageRequest paginationSecondThread = PageRequest.of(i, size);
+                printingNames(sRepository.findAll(paginationSecondThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        secondThread.start();
+
+        Thread thirdThread = new Thread(() -> {
+            for (int i = 4; i <= maxPage; i += size * 3) {
+                PageRequest paginationThirdThread = PageRequest.of(i, size);
+                printingNames(sRepository.findAll(paginationThirdThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        thirdThread.start();
+
+        for (int i = 0; i <= maxPage; i += size * 3) {
+            PageRequest paginationMainThread = PageRequest.of(i, size);
+            printingNames(sRepository.findAll(paginationMainThread)
+                    .toSet()
+                    .iterator()
+                    .next()
+                    .getName());
+        }
+        try{
+            secondThread.join();
+            thirdThread.join();
+        }catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private synchronized void printingNames(String name){
+        System.out.println(name);
     }
 }

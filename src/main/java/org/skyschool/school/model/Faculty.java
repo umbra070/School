@@ -1,32 +1,59 @@
 package org.skyschool.school.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
+@Entity
 public class Faculty {
-    private long id;
+    @Id
+    @GeneratedValue
+    private Long id;
     private String name, color;
+    @OneToMany(mappedBy = "faculty")
+    @JsonIgnore
+    private Set<Student> students;
 
-    public Faculty(){
-
+    public Faculty() {
+        students = new HashSet<>();
+    }
+    public Faculty(String name, String color){
+        this.name = name;
+        this.color = color;
+        students = new HashSet<>();
     }
 
-    public Faculty(long id, String name, String color) {
+    public Faculty(Long id, String name, String color) {
         this.id = id;
         this.name = name;
         this.color = color;
+        students = new HashSet<>();
     }
 
+    public Set<Student> getStudents(){
+        return students;
+    }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
     public String getName() {
         return name;
+    }
+
+    public void addStudent(Student s) {
+        students.add(s);
     }
 
     public void setName(String name) {
@@ -43,7 +70,7 @@ public class Faculty {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, color);
+        return Objects.hash(name, color);
     }
 
     @Override
@@ -55,11 +82,15 @@ public class Faculty {
             return false;
         }
         Faculty f = (Faculty) obj;
-        return this.id == f.id && Objects.equals(this.name, f.name) && Objects.equals(this.color, f.color);
+        return Objects.equals(this.id, f.id) && Objects.equals(this.name, f.name) && Objects.equals(this.color, f.color);
     }
 
     @Override
     public String toString() {
         return String.format("id:%d|name:%s|color:%s", id, name, color);
+    }
+
+    public void removeStudent(Student student){
+        students.remove(student);
     }
 }
