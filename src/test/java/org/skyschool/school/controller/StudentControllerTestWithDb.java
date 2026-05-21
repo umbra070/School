@@ -184,4 +184,32 @@ public class StudentControllerTestWithDb {
             Assertions.assertThat(s.getAge()).isLessThanOrEqualTo(max);
         }
     }
+
+    @Test
+    @DisplayName("Testing GET method for console printing Student entities by multithreading")
+    public void testingConsolePrinting() {
+        sRepository.deleteAll();
+        for (int i = 0; i < 500; i++) {
+            Student s = new Student();
+            s.setName(String.format("test%d student test%d", i, i));
+            s.setAge(20 + i);
+            sRepository.save(s);
+        }
+        ResponseEntity<Boolean> response = this.testRestTemplate.getForEntity("http://localhost:" + port + "/student/list/console_print", Boolean.class);
+        System.out.println(response.getBody());
+    }
+
+    @Test
+    @DisplayName("Testing GET method for synchronised console printing Student entities by multithreading")
+    public void testingConsolePrintingSync() {
+        sRepository.deleteAll();
+        for (int i = 0; i < 500; i++) {
+            Student s = new Student();
+            s.setName(String.format("test%d student test%d", i, i));
+            s.setAge(20 + i);
+            sRepository.save(s);
+        }
+        ResponseEntity<Boolean> response = this.testRestTemplate.getForEntity("http://localhost:" + port + "/student/list/console_print_sync", Boolean.class);
+        System.out.println(response.getBody());
+    }
 }

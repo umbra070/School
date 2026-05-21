@@ -7,6 +7,7 @@ import org.skyschool.school.repos.StudentsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,11 +24,13 @@ public class StudentService {
     @Autowired
     private FacultyRepository fRepository;
 
+    private final Object syncTagForPrintingStudentsNames = new Object();
+
     private final Logger logger = LoggerFactory.getLogger(StudentService.class);
 
     @Transactional
     public Student addStudent(Student student) {
-        if(student == null || student.getName().isEmpty()){
+        if (student == null || student.getName().isEmpty()) {
             logger.warn("Service: StudentService || Method: addStudent || Input data(Student student): [{}] || Output data(Student student): null || Description: Incorrect input data(Empty Student entity or empty student's name", student);
             return null;
         }
@@ -36,21 +39,21 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
-    public Integer getCount(){
+    public Integer getCount() {
         Integer count = sRepository.getStudentsCount();
         logger.info("Service: StudentService || Method: getCount || Input data(void): - || Output data(Integer): {}", count);
         return count;
     }
 
     @Transactional(readOnly = true)
-    public Set<Student> getLastStudents(){
+    public Set<Student> getLastStudents() {
         Set<Student> lastStudents = sRepository.getFiveLastStudents();
         logger.info("Service: StudentService || Method: getLastStudents || Input data(void): - || Output data(Set<Student> lastStudents): count: {}", lastStudents.size());
         return lastStudents;
     }
 
     @Transactional(readOnly = true)
-    public Integer getAverageStudentAge(){
+    public Integer getAverageStudentAge() {
         Integer averageAge = sRepository.getAverageAge();
         logger.info("Service: StudentService || Method: getAverageStudentAge || Input data(void): - || Output data(Integer averageAge): {}", averageAge);
         return averageAge;
@@ -58,7 +61,7 @@ public class StudentService {
 
     @Transactional
     public Student editStudent(Student student) {
-        if(student == null || student.getName().isEmpty() || student.getId() == null){
+        if (student == null || student.getName().isEmpty() || student.getId() == null) {
             logger.warn("Service: StudentService || Method: editStudent || Input data(Student student): [{}] " +
                     "|| Output data(Student foundStudent): null " +
                     "|| Description: Incorrect input data - Student entity, or name, or ID cannot be empty", student);
@@ -82,7 +85,7 @@ public class StudentService {
     @Transactional(readOnly = true)
     public Student findStudent(long id) {
         Student foundStudent = sRepository.findById(id).orElse(null);
-        if(foundStudent == null){
+        if (foundStudent == null) {
             logger.warn("Service: StudentService || Method: findStudent || Input data(Long id): {} " +
                     "|| Output data(Student foundStudent): null " +
                     "|| Description: no such student in DB", id);
@@ -115,7 +118,7 @@ public class StudentService {
         }
         sRepository.deleteById(id);
         logger.info("Service: StudentService || Method: removeStudent || Input data(Long id): {} " +
-                "|| Output data(boolean): true",id);
+                "|| Output data(boolean): true", id);
         return true;
     }
 
@@ -193,13 +196,13 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> getStudentsNamesByFirstChar(String firstChar){
-        if(firstChar.isEmpty()){
+    public List<String> getStudentsNamesByFirstChar(String firstChar) {
+        if (firstChar.isEmpty()) {
             return List.of();
         }
         List<Student> foundStudents = sRepository.findAll();
         List<String> filteredStudents;
-        if(foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS){
+        if (foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS) {
             filteredStudents = foundStudents.parallelStream()
                     .map(Student::getName)
                     .filter(Objects::nonNull)
@@ -207,7 +210,7 @@ public class StudentService {
                     .filter(n -> n.toUpperCase().startsWith(firstChar))
                     .sorted()
                     .collect(Collectors.toList());
-        }else{
+        } else {
             filteredStudents = foundStudents.stream()
                     .map(Student::getName)
                     .filter(Objects::nonNull)
@@ -219,12 +222,13 @@ public class StudentService {
         logger.info("Service: StudentService || Method: getStudentsNamesByFirstChar || Input data(String firstChar): {} || Output data(List<String>): counts: {}", firstChar, filteredStudents.size());
         return filteredStudents;
     }
+
     //В рамках учебного пособия метод продублирован для использования с заранее заданными условиями фильтрации
     @Transactional(readOnly = true)
-    public List<String> getStudentsNamesByFirstChar(){
+    public List<String> getStudentsNamesByFirstChar() {
         List<Student> foundStudents = sRepository.findAll();
         List<String> filteredStudents;
-        if(foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS){
+        if (foundStudents.size() > COUNT_OF_ITEMS_FOR_PARALLEL_STREAMS) {
             filteredStudents = foundStudents.parallelStream()
                     .map(Student::getName)
                     .filter(Objects::nonNull)
@@ -232,7 +236,7 @@ public class StudentService {
                     .filter(n -> n.startsWith("A") || n.startsWith("А"))
                     .sorted()
                     .collect(Collectors.toList());
-        }else{
+        } else {
             filteredStudents = foundStudents.stream()
                     .map(Student::getName)
                     .filter(Objects::nonNull)
@@ -246,7 +250,7 @@ public class StudentService {
     }
 
     @Transactional(readOnly = true)
-    public Integer getAverageAge(){
+    public Integer getAverageAge() {
         List<Student> foundStudents = sRepository.findAll();
         double averageAge = foundStudents.parallelStream()
                 .mapToInt(Student::getAge)
@@ -270,5 +274,103 @@ public class StudentService {
         logger.info("Service: StudentService || Method: findStudentsByRange || Input data(int min, int max): [{}, {}] " +
                 "|| Output data(Set<Student> foundStudents): count = {}", min, max, foundStudents.size());
         return foundStudents;
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public void printingStudentsParallel() {
+        int size = 2;
+        int totalCount = sRepository.totalStudentsCount();
+        int maxPage = (totalCount - 1) / size;
+
+        Thread secondThread = new Thread(() -> {
+            for (int i = 2; i <= maxPage; i += size * 3) {
+                PageRequest paginationSecondThread = PageRequest.of(i, size);
+                System.out.println(sRepository.findAll(paginationSecondThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        secondThread.start();
+
+        Thread thirdThread = new Thread(() -> {
+            for (int i = 4; i <= maxPage; i += size * 3) {
+                PageRequest paginationThirdThread = PageRequest.of(i, size);
+                System.out.println(sRepository.findAll(paginationThirdThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        thirdThread.start();
+        for (int i = 0; i <= maxPage; i += size * 3) {
+            PageRequest paginationMainThread = PageRequest.of(i, size);
+            System.out.println(sRepository.findAll(paginationMainThread)
+                    .toSet()
+                    .iterator()
+                    .next()
+                    .getName());
+        }
+
+        try{
+            secondThread.join();
+            thirdThread.join();
+        }catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public void printingStudentsParallelSync() {
+        int size = 2;
+        int totalCount = sRepository.totalStudentsCount();
+        int maxPage = (totalCount - 1) / size;
+
+        Thread secondThread = new Thread(() -> {
+            for (int i = 2; i <= maxPage; i += size * 3) {
+                PageRequest paginationSecondThread = PageRequest.of(i, size);
+                printingNames(sRepository.findAll(paginationSecondThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        secondThread.start();
+
+        Thread thirdThread = new Thread(() -> {
+            for (int i = 4; i <= maxPage; i += size * 3) {
+                PageRequest paginationThirdThread = PageRequest.of(i, size);
+                printingNames(sRepository.findAll(paginationThirdThread)
+                        .toSet()
+                        .iterator()
+                        .next()
+                        .getName());
+            }
+        });
+        thirdThread.start();
+
+        for (int i = 0; i <= maxPage; i += size * 3) {
+            PageRequest paginationMainThread = PageRequest.of(i, size);
+            printingNames(sRepository.findAll(paginationMainThread)
+                    .toSet()
+                    .iterator()
+                    .next()
+                    .getName());
+        }
+        try{
+            secondThread.join();
+            thirdThread.join();
+        }catch (InterruptedException e){
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private synchronized void printingNames(String name){
+        System.out.println(name);
     }
 }

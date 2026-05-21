@@ -181,4 +181,6 @@ public class FacultyContorollerTestWithDB {
         Assertions.assertThat(fRepository.existsById(testFacultyId)).isFalse();
         Assertions.assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
+
+
 }

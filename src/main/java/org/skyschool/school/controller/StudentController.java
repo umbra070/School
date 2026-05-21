@@ -134,4 +134,17 @@ public class StudentController {
         return ResponseEntity.ok(sService.getStudentsNamesByFirstChar(firstChar));
     }
 
+    //GET http://localhost:8080/student/list/console_print
+    @GetMapping("/list/console_print")
+    public ResponseEntity<Boolean> consolePrint(){
+        sService.printingStudentsParallel();
+        return ResponseEntity.ok(true);
+    }
+
+    //GET http://localhost:8080/student/list/console_print_sync
+    @GetMapping("/list/console_print_sync")
+    public ResponseEntity<Boolean> consolePrintSync(){
+        sService.printingStudentsParallelSync();
+        return ResponseEntity.ok(true);
+    }
 }

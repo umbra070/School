@@ -27,4 +27,7 @@ public interface StudentsRepository extends JpaRepository<Student, Long> {
 
     @Query("SELECT s FROM Student s ORDER BY s.id  DESC LIMIT 5")
     public Set<Student> getFiveLastStudents();
+
+    @Query("SELECT COUNT(*) FROM Student")
+    public int totalStudentsCount();
 }
